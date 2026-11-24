@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# CoolerControl plugin manifest for cc-asus-aura-argb.
+# Install to <plugins dir>/asus-aura-argb/manifest.toml, where <plugins dir> is the
+# directory the CoolerControl daemon scans: /var/lib/coolercontrol/plugins for native
+# packages, /etc/coolercontrol/plugins for the official container image (see README).
+# The socket below stays under /var/lib/coolercontrol either way.
+
+id = "asus-aura-argb"
+type = "device"
+description = "ASUS Aura USB mainboard lighting, an independent effect per channel (cc-asus-aura-argb)"
+version = "0.1.0"
+url = "https://github.com/halsafar/cc-asus-aura-argb"
+
+# Unix socket the service listens on. Must match `--socket` in the systemd unit.
+address = "/var/lib/coolercontrol/plugins/asus-aura-argb/asus-aura-argb.sock"
+
+# No `executable` on purpose: CoolerControl does not start or manage this service.
+# It is run by systemd (cc-asus-aura-argb.service), so it also works when the
+# CoolerControl daemon runs in a container. `privileged`, `args` and `envs` only
+# apply to services CoolerControl starts, so they are not set.

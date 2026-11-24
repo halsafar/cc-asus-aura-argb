@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# CoolerControl device-service plugin for ASUS Aura USB mainboard lighting.
+# Install to /etc/systemd/system/cc-asus-aura-argb.service.
+#
+# CoolerControl does not start this service (the manifest has no `executable`);
+# systemd does, before the daemon, and the daemon connects to the socket.
+
+[Unit]
+Description=CoolerControl plugin: ASUS Aura USB per-channel lighting
+# Native package unit and the usual container unit names.
+Before=coolercontrold.service coolercontrol.service
+
+[Service]
+Type=exec
+# At startup the service waits up to 10 s (--device-wait) for the controller's
+# hidraw node to appear, then reads its firmware string and config table once.
+ExecStart=/usr/local/bin/cc-asus-aura-argb serve --socket /var/lib/coolercontrol/plugins/asus-aura-argb/asus-aura-argb.sock
+Restart=on-failure
+RestartSec=3
+# A pending auto-save is flushed on SIGTERM (bounded at 5 s by the service).
+TimeoutStopSec=15
+
+# Auto-save records what is stored in the controller's memory here
+# (/var/lib/cc-asus-aura-argb, passed as $STATE_DIRECTORY). systemd creates it
+# owned by root and makes it writable despite ProtectSystem=strict.
+# To turn auto-save off, add --no-auto-save to ExecStart.
+StateDirectory=cc-asus-aura-argb
+StateDirectoryMode=0700
+
+# Runs as root (the hidraw node and the plugin directory are root's) but with no
+# capabilities and a read-only view of the system.
+UMask=0077
+CapabilityBoundingSet=
+AmbientCapabilities=
+NoNewPrivileges=yes
+
+# Devices: only hidraw character devices (major "hidraw" in /proc/devices,
+# registered by the HID core at boot). Do not add PrivateDevices=yes: it would hide
+# /dev/hidraw*.
+DevicePolicy=closed
+DeviceAllow=char-hidraw rw
+
+# Filesystem: everything read-only except the plugin directory (for the socket)
+# and the StateDirectory above. /dev, /proc and /sys stay visible; sysfs is only
+# read (class/hidraw, the USB device, class/dmi/id).
+ProtectSystem=strict
+ReadWritePaths=/var/lib/coolercontrol/plugins/asus-aura-argb
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+
+# Network: none. A Unix socket bound to a filesystem path still works across
+# network namespaces, so CoolerControl (even in a container) can connect.
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX
+
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+# ioctl (HIDIOCGRAWINFO) and poll are part of @system-service.
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target
